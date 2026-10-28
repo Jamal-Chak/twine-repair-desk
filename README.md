@@ -1,42 +1,21 @@
 # TwineEngine Repair Desk
 
-Interactive repair-enquiry demo built with HTML, CSS and JavaScript. No dependencies, database or API keys are required.
+A working single-owner service-enquiry pilot: a customer intake form, D1 persistence, protected staff dashboard, status changes, internal notes, activity history, search and CSV export.
 
-## Run locally
+## Current scope
+- Requests save in the server database, not localStorage. Failed requests retain form input; retries reuse the request UUID.
+- Every staff API checks trusted Sites identity. The configured OWNER_EMAIL bootstraps one permanent owner user ID. Other identities are denied. Never expose this Worker behind an untrusted proxy that permits callers to spoof identity headers.
+- Status writes use record versions and a transactional batch to avoid lost updates.
+- Input size limits, validation, same-origin mutation checks, honeypot and hourly rate limits protect intake. CSV output escapes cells and neutralises common formula prefixes.
+- No automatic email, SMS, WhatsApp, AI answers, payments or booking confirmation. Staff must check the dashboard and contact customers themselves.
+- This is a private pilot, not an operational repair company. Use fictional details until a real operator is configured.
 
-From the repository folder on Windows:
+## Development
+Use Node 22.13+ and the pinned pnpm version. Install with `pnpm install`, then `pnpm db:generate` only after schema changes. Run `node --experimental-transform-types --test tests/domain.test.ts` and `pnpm exec tsc --noEmit`.
 
-```powershell
-py -m http.server 8000 --directory dist
-```
+Sites uses the supplied build/preview scripts and managed D1 binding `DB`. Keep the Sites integration, worker and scripts. Set OWNER_EMAIL through Sites runtime environment settings; never commit credentials. Build with the Sites build helper. Apply the generated SQL to local D1 before testing. Hosted migrations are applied during deployment. The hosting manifest binds this checkout to the existing Site; cloning the GitHub repository does not automatically deploy it.
 
-Open http://localhost:8000. On macOS/Linux use `python3` instead of `py`. Alternatively, serve `dist` using VS Code Live Server.
+## Before real customers
+Verify the owner sign-in flow on the hosted gateway, submit an end-to-end enquiry, update it and check it from another session. Configure the actual business identity, service coverage, contact details and privacy notice. Agree retention/deletion handling and test database backup and restore. Set up monitoring and an operational routine or notification provider. Explicitly change site access to public only when intake is ready; staff routes stay owner-only.
 
-## Files
-
-- `dist/index.html`: interface and responsive styles
-- `dist/app.js`: form submission, search, details, status changes and local storage
-
-## Demo workflow
-
-1. Open Customer view and enter fictional contact details.
-2. Submit an enquiry, then open Business dashboard.
-3. Move the request through New, Contacted and Closed.
-4. Search by name, service, area or reference.
-5. Use Reset demo to restore the fictional examples.
-
-## Limitations
-
-This is a demonstration, not a production customer-management system. Records are stored only in the current browser under `twine-repair-desk-v1`. They do not synchronise between devices. Clearing browser data or resetting the demo removes changes. No emails, calls, SMS or WhatsApp messages are sent. There is no AI chatbot, staff authentication, payment processing or confirmed booking flow. Do not enter real customer data.
-
-## Validation
-
-JavaScript syntax can be checked with `node --check dist/app.js`. The demo was manually checked for submission, status changes, search, reload persistence and reset. Further security, accessibility and device testing is needed before a live implementation.
-
-## Deployment
-
-Serve the `dist` directory on a static web host; no build step is needed. This repository is a code copy of the privately hosted Sites demonstration. Changes here do not automatically update that deployment.
-
-## Future implementation
-
-A live service needs server-side validation, shared storage, staff access controls, appropriate data handling, monitoring and backups. Notifications and AI are separately scoped additions.
+No automated data deletion or recovery process has been verified. Export is a convenience, not a complete database backup (it excludes activity history). The dashboard exports at most 10,000 records, lists 100 per page and displays the newest 100 history events per request. Owner replacement requires a controlled database operation. This version supports one business and one owner.

@@ -1,0 +1,4 @@
+import {db,guard,requireStaff} from '../../../../../lib/server';
+import {csvCell} from '../../../../../lib/domain';
+export const dynamic='force-dynamic';
+export async function GET(){return guard(async()=>{await requireStaff();const rows=await db().prepare('SELECT * FROM enquiries ORDER BY created_at DESC LIMIT 10001').all();if(rows.results.length>10000)return new Response('Export exceeds 10,000 records. Contact your administrator.',{status:413});const cols=['id','name','phone','email','area','service','description','status','created_at','updated_at','contacted_at','closed_at'];const csv=[cols.map(csvCell).join(','),...rows.results.map(r=>cols.map(c=>csvCell(r[c])).join(','))].join('\r\n');return new Response('\uFEFF'+csv,{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="repair-desk-enquiries.csv"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})})}
