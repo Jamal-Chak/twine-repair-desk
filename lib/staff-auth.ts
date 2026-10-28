@@ -1,0 +1,9 @@
+import {env} from 'cloudflare:workers';
+import {cookies} from 'next/headers';
+import {HttpError} from './domain';
+export const SESSION_COOKIE='__Host-twine-session';
+type Settings={SUPABASE_URL?:string;SUPABASE_PUBLISHABLE_KEY?:string;OWNER_AUTH_USER_ID?:string};
+export function settings(){const c=env as Settings;if(!c.SUPABASE_URL||!c.SUPABASE_PUBLISHABLE_KEY||!c.OWNER_AUTH_USER_ID)throw new HttpError(503,'Staff sign-in is not configured yet.');const url=new URL(c.SUPABASE_URL);if(url.protocol!=='https:'||url.pathname!=='/'||url.search||url.hash||url.username||url.password)throw new HttpError(503,'Staff sign-in configuration is invalid.');return {url:url.origin,key:c.SUPABASE_PUBLISHABLE_KEY,owner:c.OWNER_AUTH_USER_ID}}
+export async function provider(path:string,init:RequestInit={}){const c=settings();return fetch(c.url+'/auth/v1'+path,{...init,redirect:'error',signal:AbortSignal.timeout(10000),headers:{apikey:c.key,'Content-Type':'application/json',...init.headers}})}
+export async function requireStaff(){const token=(await cookies()).get(SESSION_COOKIE)?.value;if(!token)throw new HttpError(401,'Sign in to access the staff dashboard.');const r=await provider('/user',{headers:{Authorization:'Bearer '+token}});if(r.status>=500||r.status===429)throw new HttpError(503,'Sign-in service is temporarily unavailable.');if(!r.ok)throw new HttpError(401,'Your session expired. Please sign in again.');const user=await r.json() as {id?:string;email?:string;email_confirmed_at?:string};if(!user.email_confirmed_at||user.id!==settings().owner)throw new HttpError(403,'Your account does not have staff access.');return {userId:user.id,email:user.email||'',displayName:user.email||'Staff'}}
+export function sessionHeader(token:string,seconds:number){return `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${seconds}`}
