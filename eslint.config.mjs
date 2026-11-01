@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     ".sites-runtime/**",
     "outputs/**",
     "work/**",
+    // Intentional CommonJS test harness: transpiles and loads app code through
+    // `require()` in a VM context; not subject to ESM/TS lint rules.
+    "tests/integration.cjs",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

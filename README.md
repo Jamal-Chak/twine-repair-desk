@@ -1,21 +1,29 @@
 # TwineEngine Repair Desk
 
-A working single-owner service-enquiry pilot: a customer intake form, D1 persistence, protected staff dashboard, status changes, internal notes, activity history, search and CSV export.
+A single-owner service enquiry pilot with public intake, D1 persistence, a protected staff dashboard, status changes, internal notes, activity history, search, and CSV export.
 
-## Current scope
-- Requests save in the server database, not localStorage. Failed requests retain form input; retries reuse the request UUID.
-- Every staff API checks trusted Sites identity. The configured OWNER_EMAIL bootstraps one permanent owner user ID. Other identities are denied. Never expose this Worker behind an untrusted proxy that permits callers to spoof identity headers.
-- Status writes use record versions and a transactional batch to avoid lost updates.
-- Input size limits, validation, same-origin mutation checks, honeypot and hourly rate limits protect intake. CSV output escapes cells and neutralises common formula prefixes.
-- No automatic email, SMS, WhatsApp, AI answers, payments or booking confirmation. Staff must check the dashboard and contact customers themselves.
-- This is a private pilot, not an operational repair company. Use fictional details until a real operator is configured.
+## Scope and safeguards
+
+- Staff APIs validate the trusted Sites identity. `OWNER_EMAIL` bootstraps one permanent owner identity; all other identities are denied. Do not put the Worker behind a proxy that lets callers spoof identity headers.
+- Intake validates inputs, checks same-origin mutations, uses a honeypot, and applies per-IP and per-email rate limits. Status updates use record versions and a database batch to avoid lost updates.
+- CSV cells are quoted and common formula prefixes are neutralized.
+- The app does not send email, SMS, or WhatsApp messages, confirm bookings, or process payments. Staff must check the dashboard and contact customers.
+- This is a pilot, not an operational repair company. Use fictional details until a real operator has approved the service and privacy information.
 
 ## Development
-Use Node 22.13+ and the pinned pnpm version. Install with `pnpm install`, then `pnpm db:generate` only after schema changes. Run `node --experimental-transform-types --test tests/domain.test.ts` and `pnpm exec tsc --noEmit`.
 
-Sites uses the supplied build/preview scripts and managed D1 binding `DB`. Keep the Sites integration, worker and scripts. Set OWNER_EMAIL through Sites runtime environment settings; never commit credentials. Build with the Sites build helper. Apply the generated SQL to local D1 before testing. Hosted migrations are applied during deployment. The hosting manifest binds this checkout to the existing Site; cloning the GitHub repository does not automatically deploy it.
+Use Node 22.13+ and the pinned pnpm version. Install with `pnpm install`. The repository's CI workflow runs typecheck, lint, unit and integration tests, then a production build.
 
-## Before real customers
-Verify the owner sign-in flow on the hosted gateway, submit an end-to-end enquiry, update it and check it from another session. Configure the actual business identity, service coverage, contact details and privacy notice. Agree retention/deletion handling and test database backup and restore. Set up monitoring and an operational routine or notification provider. Explicitly change site access to public only when intake is ready; staff routes stay owner-only.
+Keep the Sites integration, worker, and scripts. Set `OWNER_EMAIL` through the connected Site's runtime environment; never commit credentials. The hosting manifest binds this checkout to the existing Site and managed D1 database. Cloning the repository does not deploy it. Local database setup and hosted migrations should follow the connected Sites workflow.
 
-No automated data deletion or recovery process has been verified. Export is a convenience, not a complete database backup (it excludes activity history). The dashboard exports at most 10,000 records, lists 100 per page and displays the newest 100 history events per request. Owner replacement requires a controlled database operation. This version supports one business and one owner.
+## Before launch
+
+Configure the real business identity, service coverage, contact details, and privacy notice. Agree a retention and deletion process, test database backup and restore, and set up monitoring for `/api/health`. Confirm who checks new enquiries and how they follow up. Make the Site public only after the operator has approved intake; staff APIs remain owner-only.
+
+There is no automatic record deletion schedule. CSV export excludes activity history and is not a database backup. The dashboard lists 100 records per page, exports at most 10,000 records, and shows the newest 100 events per enquiry. The system supports one business and one permanently bound owner.
+
+See [PRODUCTION-READINESS.md](PRODUCTION-READINESS.md) for the launch checklist and current limits.
+
+## Response security
+
+The Worker adds `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`, plus HSTS on HTTPS requests. Frame restrictions and a strict Content Security Policy are omitted because the app runs in an embedded Sites environment and its framework hydration needs a compatible policy.
